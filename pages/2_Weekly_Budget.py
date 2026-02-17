@@ -1,9 +1,23 @@
 import streamlit as st
 import pandas as pd
 from datetime import date
-from db import engine
+import gspread
+from gspread_dataframe import set_with_dataframe
+import json
 
 st.title("📊 Weekly Budget Setup")
+
+# ---------------- GOOGLE SHEETS ----------------
+scope = [
+    "https://spreadsheets.google.com/feeds",
+    "https://www.googleapis.com/auth/drive"
+]
+
+# Load creds from Streamlit secrets
+creds_dict = json.loads(st.secrets["GSHEET_CREDS_JSON"])
+client = gspread.service_account_from_dict(creds_dict)
+spreadsheet = client.open("Streamlit Database")
+worksheet = spreadsheet.worksheet("weekly_budget")
 
 week_start = st.date_input("Week Start Date", date.today())
 
@@ -12,14 +26,23 @@ weekly_budget = st.number_input("Budget for the Week (₵)", 0.0)
 expected_income = st.number_input("Expected Income (₵)", 0.0)
 
 if st.button("Save Weekly Budget"):
-    df = pd.DataFrame([{
-        "week_start": week_start,
+    # Read existing data
+    try:
+        df_existing = pd.DataFrame(worksheet.get_all_records())
+    except gspread.exceptions.APIError:
+        df_existing = pd.DataFrame(columns=["week_start","money_available","weekly_budget","expected_income"])
+
+    # Append new entry
+    df_new = pd.DataFrame([{
+        "week_start": str(week_start),
         "money_available": money_available,
         "weekly_budget": weekly_budget,
         "expected_income": expected_income
     }])
+    df_updated = pd.concat([df_existing, df_new], ignore_index=True)
 
-    df.to_sql("weekly_budget", engine, if_exists="append", index=False)
+    # Clear worksheet and write updated data
+    worksheet.clear()
+    set_with_dataframe(worksheet, df_updated, include_index=False)
+
     st.success("✅ Weekly budget saved!")
-    
-
