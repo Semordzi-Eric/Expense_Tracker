@@ -1,9 +1,11 @@
+import os
 import pandas as pd
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from gspread_dataframe import set_with_dataframe
 from sqlalchemy import create_engine
 from sqlalchemy.engine import URL
+import json
 
 # ---------------- SQL SERVER ----------------
 server = r"HFTL-RA-0013\SQLEXPRESS03"
@@ -27,12 +29,12 @@ scope = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-creds = ServiceAccountCredentials.from_json_keyfile_name(
-    "service_account.json", scope
-)
+# Load credentials from environment variable (Streamlit Secret)
+creds_dict = json.loads(os.environ["GSHEET_CREDS_JSON"])
+creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 
 client = gspread.authorize(creds)
-spreadsheet = client.open("Streamlit Database")
+spreadsheet = client.open("Streamlit Database")  # exact title!
 
 # ---------------- TABLES ----------------
 tables = [
