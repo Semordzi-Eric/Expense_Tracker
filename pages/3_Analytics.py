@@ -7,8 +7,8 @@ from plotly.subplots import make_subplots
 import calendar
 from datetime import datetime, timedelta
 from io import BytesIO
-from db import engine
 from utils import export_pdf
+from data_source import load_table  # new import for Google Sheets
 
 # try sklearn, but continue gracefully if not available
 try:
@@ -157,28 +157,31 @@ def generate_insights(df, weekly_budget, burn_rate):
 # ---------------------
 @st.cache_data(ttl=300)
 def load_data(start=None, end=None):
-    """Load expense and budget data"""
+    """Load expense and budget data from Google Sheets"""
+
     try:
-        q = "SELECT * FROM daily_expenses"
-        if start is not None and end is not None:
-            q = f"SELECT * FROM daily_expenses WHERE expense_date BETWEEN '{start}' AND '{end}'"
-        
-        expenses = pd.read_sql(q, engine, parse_dates=["expense_date"])
-        
-        # Load budgets
-        try:
-            budget = pd.read_sql("SELECT TOP 1 * FROM weekly_budget ORDER BY id DESC", engine)
-        except:
-            budget = pd.DataFrame({'weekly_budget': [1000], 'week_start': [pd.Timestamp.now() - pd.Timedelta(days=7)]})
-        
-        try:
-            daily_budget = pd.read_sql("SELECT * FROM daily_budget", engine, parse_dates=["budget_date"])
-        except:
-            daily_budget = pd.DataFrame()
-        
+        expenses = load_table("daily_expenses")
+        budget = load_table("weekly_budget")
+        daily_budget = load_table("daily_budget")
+
+        # ensure dates are datetime
+        if "expense_date" in expenses.columns:
+            expenses["expense_date"] = pd.to_datetime(expenses["expense_date"])
+
+        if "budget_date" in daily_budget.columns:
+            daily_budget["budget_date"] = pd.to_datetime(daily_budget["budget_date"])
+
+        # filter range
+        if start and end and not expenses.empty:
+            expenses = expenses[
+                (expenses["expense_date"] >= pd.to_datetime(start)) &
+                (expenses["expense_date"] <= pd.to_datetime(end))
+            ]
+
         return expenses, budget, daily_budget
+
     except Exception as e:
-        st.error(f"Error loading data: {str(e)}")
+        st.error(f"Error loading data: {e}")
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
 
 # ---------------------
