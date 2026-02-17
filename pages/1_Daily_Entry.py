@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import date
 import gspread
 from gspread_dataframe import set_with_dataframe
-import json
+from oauth2client.service_account import ServiceAccountCredentials
 
 st.title("📅 Daily Expense Entry")
 
@@ -13,12 +13,16 @@ scope = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-# Load creds from Streamlit secrets
-creds_dict = json.loads(st.secrets["GSHEET_CREDS_JSON"])
-client = gspread.service_account_from_dict(creds_dict)
+# Use the service account stored in Streamlit secrets
+creds_dict = dict(st.secrets["gcp_service_account"])
+creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")  # convert escaped newlines
+
+creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+client = gspread.authorize(creds)
 spreadsheet = client.open("Streamlit Database")
 worksheet = spreadsheet.worksheet("daily_expenses")
 
+# ---------------- STREAMLIT FORM ----------------
 with st.form("daily_expense_form"):
     expense_date = st.date_input("Expense Date", date.today())
 
@@ -26,7 +30,6 @@ with st.form("daily_expense_form"):
     with col1:
         transport = st.number_input("Transport (₵)", 0.0)
         food = st.number_input("Food (₵)", 0.0)
-
     with col2:
         data = st.number_input("Data (₵)", 0.0)
         other = st.number_input("Other (₵)", 0.0)
