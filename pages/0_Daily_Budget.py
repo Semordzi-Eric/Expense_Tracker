@@ -4,8 +4,6 @@ from datetime import date
 import gspread
 from gspread_dataframe import set_with_dataframe
 from oauth2client.service_account import ServiceAccountCredentials
-import os
-import json
 
 st.title("Daily Budget Setup")
 
@@ -15,11 +13,17 @@ scope = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-# Load creds from Streamlit secrets
-creds_dict = json.loads(st.secrets["GSHEET_CREDS_JSON"])
+# Use the service account stored in Streamlit secrets
+creds_dict = dict(st.secrets["gcp_service_account"])
+
+# Convert escaped \n in private_key to actual newlines
+creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")
+
 creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
 client = gspread.authorize(creds)
 spreadsheet = client.open("Streamlit Database")
+
+# ---------------- DAILY BUDGET WORKSHEET ----------------
 worksheet = spreadsheet.worksheet("daily_budget")
 
 # ---------------- STREAMLIT FORM ----------------

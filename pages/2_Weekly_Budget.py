@@ -3,7 +3,7 @@ import pandas as pd
 from datetime import date
 import gspread
 from gspread_dataframe import set_with_dataframe
-import json
+from oauth2client.service_account import ServiceAccountCredentials
 
 st.title("📊 Weekly Budget Setup")
 
@@ -13,14 +13,17 @@ scope = [
     "https://www.googleapis.com/auth/drive"
 ]
 
-# Load creds from Streamlit secrets
-creds_dict = json.loads(st.secrets["GSHEET_CREDS_JSON"])
-client = gspread.service_account_from_dict(creds_dict)
+# Use the service account stored in Streamlit secrets
+creds_dict = dict(st.secrets["gcp_service_account"])
+creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n")  # convert escaped newlines
+
+creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+client = gspread.authorize(creds)
 spreadsheet = client.open("Streamlit Database")
 worksheet = spreadsheet.worksheet("weekly_budget")
 
+# ---------------- STREAMLIT FORM ----------------
 week_start = st.date_input("Week Start Date", date.today())
-
 money_available = st.number_input("Money Available (₵)", 0.0)
 weekly_budget = st.number_input("Budget for the Week (₵)", 0.0)
 expected_income = st.number_input("Expected Income (₵)", 0.0)
