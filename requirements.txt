@@ -3,3 +3,11 @@ sqlalchemy
 pyodbc
 pandas
 plotly
+streamlit
+pandas
+sqlalchemy
+pyodbc
+gspread
+oauth2client
+gspread-dataframe
+reportlab
